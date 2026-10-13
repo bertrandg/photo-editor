@@ -3,6 +3,7 @@ import { CropIcon, PencilIcon, SlidersHorizontalIcon } from "lucide-react"
 import type { ComponentType } from "react"
 import { DEFAULT_ADJUSTMENTS } from "../adjustments"
 import { FULL_CROP } from "../render/geometry"
+import { IDENTITY_TRANSFORM } from "../render/transform"
 import type { EditorState } from "../types"
 import { AdjustPanel } from "./adjust/adjust-panel"
 import { AnnotatePanel } from "./annotate/annotate-panel"
@@ -32,7 +33,7 @@ export const TOOLS: EditorTool[] = [
     icon: CropIcon,
     Panel: CropPanel,
     stage: "crop",
-    reset: (s) => ({ ...s, crop: FULL_CROP, cropAspect: undefined, cropPreset: "free" }),
+    reset: (s) => ({ ...s, transform: IDENTITY_TRANSFORM, crop: FULL_CROP, cropAspect: undefined, cropPreset: "free" }),
   },
   {
     id: "adjust",

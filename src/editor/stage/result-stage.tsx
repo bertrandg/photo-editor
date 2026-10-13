@@ -14,7 +14,7 @@ interface Props {
 
 /** Cropped + adjusted image with its overlays, as it will be exported. */
 export function ResultStage({ source, version, interactive }: Props) {
-  const { image, state, showOriginal } = useEditor()
+  const { state, showOriginal } = useEditor()
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // Redraw once web fonts are available (text overlays).
@@ -38,9 +38,9 @@ export function ResultStage({ source, version, interactive }: Props) {
     c.height = outH
     const ctx = c.getContext("2d")!
     ctx.imageSmoothingQuality = "high"
-    ctx.drawImage(showOriginal ? image.preview : source, crop.x, crop.y, crop.width, crop.height, 0, 0, outW, outH)
+    ctx.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, outW, outH)
     if (!showOriginal) drawOverlays(ctx, state.overlays, outW, outH)
-  }, [source, version, image.preview, showOriginal, state.overlays, crop.x, crop.y, crop.width, crop.height, outW, outH, size.width, fontsReady])
+  }, [source, version, showOriginal, state.overlays, crop.x, crop.y, crop.width, crop.height, outW, outH, size.width, fontsReady])
 
 
   return (

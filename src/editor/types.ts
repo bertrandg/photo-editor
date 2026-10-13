@@ -1,4 +1,5 @@
 import type { Overlay } from "./overlays/types"
+import type { ImageTransform } from "./render/transform"
 
 /** Crop rectangle expressed in percent (0–100) of the source image. */
 export interface CropRect {
@@ -22,6 +23,9 @@ export interface LoadedImage {
 
 /** Everything that is part of the undo/redo history. */
 export interface EditorState {
+  /** Rotation / mirror / straightening, applied before the crop. */
+  transform: ImageTransform
+  /** Expressed in the transformed image space. */
   crop: CropRect
   /** `undefined` means free cropping. */
   cropAspect: number | undefined

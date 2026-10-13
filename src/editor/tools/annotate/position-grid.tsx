@@ -3,13 +3,15 @@ import { useEditor } from "../../editor-context"
 import { getOverlayBox } from "../../overlays/kinds"
 import type { Overlay } from "../../overlays/types"
 import { cropToPixels } from "../../render/geometry"
+import { transformedSize } from "../../render/transform"
 
 const MARGIN = 0.04 // fraction of the output size
 
 /** 3×3 grid that snaps the overlay to a corner / edge / center of the image. */
 export function PositionGrid({ overlay, onChange }: { overlay: Overlay; onChange: (pos: { x: number; y: number }) => void }) {
   const { image, state } = useEditor()
-  const crop = cropToPixels(state.crop, image.width, image.height, state.cropAspect)
+  const size = transformedSize(state.transform, image.width, image.height)
+  const crop = cropToPixels(state.crop, size.width, size.height, state.cropAspect)
   // Measure in a normalized space whose aspect ratio matches the output.
   const W = 1000
   const H = (W * crop.height) / crop.width

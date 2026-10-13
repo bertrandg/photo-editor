@@ -30,7 +30,8 @@ Démo : https://bertrandg.github.io/photo-editor/ — déployée automatiquement
 | `tools/index.ts` | **Registre des onglets** (id, libellé, icône, panneau, reset). Ajouter un outil = une entrée. |
 | `adjustments.ts` | **Registre des réglages** (métadonnées UI + traitement pixel). Le panneau « Ajuster », l'aperçu et l'export sont générés à partir de ce tableau. |
 | `overlays/kinds.ts` | Rendu canvas des calques (texte, image). Ajouter un type = un renderer ici + un formulaire dans `tools/annotate/overlay-forms.tsx`. |
-| `tools/crop/crop-panel.tsx` | `RATIO_PRESETS` : liste des formats de recadrage. |
+| `tools/crop/crop-panel.tsx` | Rotation 90°, symétries, redressement et `RATIO_PRESETS` (formats de recadrage). |
+| `render/transform.ts` | Géométrie (rotation, miroir, redressement avec zoom auto), partagée par l'aperçu et l'export. |
 | `render/export.ts` | Rendu pleine résolution + Web Worker (`adjust.worker.ts`). |
 | `use-history.ts` | Undo/redo (les gestes continus comme un slider ne créent qu'une entrée). |
 | `stage/` | Zone centrale : `CropStage` (cadre de recadrage) et `ResultStage` (rendu final + calques déplaçables). |

@@ -10,10 +10,10 @@ interface Props {
 
 /** Full (uncropped) image with an editable crop frame. */
 export function CropStage({ source, version }: Props) {
-  const { image, state, setState, commit } = useEditor()
+  const { state, setState, commit, showGrid } = useEditor()
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const size = useFitSize(containerRef, image.width / image.height)
+  const size = useFitSize(containerRef, source.width / source.height)
 
   useEffect(() => {
     const c = canvasRef.current
@@ -43,9 +43,27 @@ export function CropStage({ source, version }: Props) {
           }
           onComplete={commit}
         >
-          <canvas ref={canvasRef} style={{ width: size.width, height: size.height, display: "block" }} />
+          <div className="relative" style={{ width: size.width, height: size.height }}>
+            <canvas ref={canvasRef} className="block h-full w-full" />
+            {showGrid && <AlignmentGrid />}
+          </div>
         </ReactCrop>
       )}
     </div>
+  )
+}
+
+/** Dense grid displayed while straightening, to line up the horizon. */
+function AlignmentGrid() {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0"
+      style={{
+        backgroundImage:
+          "linear-gradient(to right, rgba(255,255,255,0.35) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.35) 1px, transparent 1px)",
+        backgroundSize: "12.5% 12.5%",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.35)",
+      }}
+    />
   )
 }

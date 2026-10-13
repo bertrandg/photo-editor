@@ -2,6 +2,7 @@ import { hasActiveAdjustments } from "../adjustments"
 import { drawOverlays } from "../overlays/kinds"
 import type { EditorState, LoadedImage } from "../types"
 import { cropToPixels } from "./geometry"
+import { applyTransform, transformedSize } from "./transform"
 import type { AdjustRequest } from "./adjust.worker"
 
 export type ExportFormat = "image/png" | "image/jpeg" | "image/webp"
@@ -47,8 +48,13 @@ function adjustInWorker(data: ImageData, values: Record<string, number>): Promis
   })
 }
 
+function cropOf(image: LoadedImage, state: EditorState) {
+  const { width, height } = transformedSize(state.transform, image.width, image.height)
+  return cropToPixels(state.crop, width, height, state.cropAspect)
+}
+
 async function renderAt(image: LoadedImage, state: EditorState, scale: number) {
-  const crop = cropToPixels(state.crop, image.width, image.height, state.cropAspect)
+  const crop = cropOf(image, state)
   const outW = Math.max(1, Math.round(crop.width * scale))
   const outH = Math.max(1, Math.round(crop.height * scale))
 
@@ -58,7 +64,14 @@ async function renderAt(image: LoadedImage, state: EditorState, scale: number) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true })
   if (!ctx) throw new Error("Canvas indisponible")
   ctx.imageSmoothingQuality = "high"
-  ctx.drawImage(image.full, crop.x, crop.y, crop.width, crop.height, 0, 0, outW, outH)
+  // Draw only the cropped part of the transformed image, straight from the
+  // full resolution bitmap (no intermediate full-size canvas).
+  ctx.save()
+  ctx.scale(outW / crop.width, outH / crop.height)
+  ctx.translate(-crop.x, -crop.y)
+  applyTransform(ctx, state.transform, image.width, image.height)
+  ctx.drawImage(image.full, 0, 0, image.width, image.height)
+  ctx.restore()
 
   if (hasActiveAdjustments(state.adjustments)) {
     for (let y = 0; y < outH; y += STRIP_ROWS) {
@@ -89,7 +102,7 @@ function toBlob(canvas: HTMLCanvasElement, type: ExportFormat, quality: number) 
  * the browser canvas limits) and returns the encoded file.
  */
 export async function exportImage(image: LoadedImage, state: EditorState, type: ExportFormat, quality = 0.92) {
-  const crop = cropToPixels(state.crop, image.width, image.height, state.cropAspect)
+  const crop = cropOf(image, state)
   let scale = Math.min(
     1,
     MAX_CANVAS_DIM / crop.width,

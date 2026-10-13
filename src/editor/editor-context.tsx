@@ -1,10 +1,12 @@
 import { createContext, useContext, useState, type ReactNode } from "react"
 import { DEFAULT_ADJUSTMENTS } from "./adjustments"
 import { FULL_CROP } from "./render/geometry"
+import { IDENTITY_TRANSFORM } from "./render/transform"
 import type { EditorState, LoadedImage } from "./types"
 import { useHistory } from "./use-history"
 
 export const INITIAL_STATE: EditorState = {
+  transform: IDENTITY_TRANSFORM,
   crop: FULL_CROP,
   cropAspect: undefined,
   cropPreset: "free",
@@ -23,6 +25,9 @@ interface EditorContextValue extends Omit<History, "set"> {
   setSelectedOverlayId: (id: string | null) => void
   showOriginal: boolean
   setShowOriginal: (v: boolean) => void
+  /** Displays a dense alignment grid over the image (while straightening). */
+  showGrid: boolean
+  setShowGrid: (v: boolean) => void
 }
 
 const EditorContext = createContext<EditorContextValue | null>(null)
@@ -40,6 +45,7 @@ export function EditorProvider({
   const [activeTool, setActiveTool] = useState(initialTool)
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null)
   const [showOriginal, setShowOriginal] = useState(false)
+  const [showGrid, setShowGrid] = useState(false)
 
   const value: EditorContextValue = {
     ...history,
@@ -51,6 +57,8 @@ export function EditorProvider({
     setSelectedOverlayId,
     showOriginal,
     setShowOriginal,
+    showGrid,
+    setShowGrid,
   }
 
   return <EditorContext.Provider value={value}>{children}</EditorContext.Provider>
