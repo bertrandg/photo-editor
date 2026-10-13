@@ -94,11 +94,11 @@ export function CropPanel() {
             +90°
           </IconAction>
           <IconAction label="Symétrie horizontale" onClick={() => setState((s) => ({ ...s, ...flip(s, "h") }))}>
-            <FlipHorizontal2Icon className="size-5!" />
+            <FlipVertical2Icon className="size-5!" />
             Horiz.
           </IconAction>
           <IconAction label="Symétrie verticale" onClick={() => setState((s) => ({ ...s, ...flip(s, "v") }))}>
-            <FlipVertical2Icon className="size-5!" />
+            <FlipHorizontal2Icon className="size-5!" />
             Vert.
           </IconAction>
         </div>
