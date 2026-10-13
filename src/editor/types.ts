@@ -1,4 +1,5 @@
 import type { Overlay } from "./overlays/types"
+import type { ExifData } from "./render/exif"
 import type { ImageTransform } from "./render/transform"
 
 /** Crop rectangle expressed in percent (0–100) of the source image. */
@@ -19,6 +20,8 @@ export interface LoadedImage {
   height: number
   /** Base file name (without extension) used for the download. */
   name: string
+  /** EXIF metadata of the source file (JPEG only), copied to the export. */
+  exif: ExifData | null
 }
 
 /** Everything that is part of the undo/redo history. */

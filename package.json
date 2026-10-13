@@ -16,6 +16,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.56.0",
+    "piexifjs": "^1.0.6",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-image-crop": "^11.1.2",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
+    "@types/piexifjs": "^1.0.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",

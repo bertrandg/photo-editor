@@ -1,4 +1,5 @@
 import type { LoadedImage } from "../types"
+import { readExif } from "./exif"
 
 /** Longest edge of the interactive preview. Export always uses full resolution. */
 export const PREVIEW_MAX_EDGE = 2048
@@ -50,8 +51,8 @@ export async function decodeBlob(blob: Blob): Promise<ImageBitmap> {
 }
 
 async function fromBlob(blob: Blob, name: string): Promise<LoadedImage> {
-  const full = await decodeBlob(blob)
-  return { full, preview: makePreview(full), width: full.width, height: full.height, name: baseName(name) }
+  const [full, exif] = await Promise.all([decodeBlob(blob), readExif(blob).catch(() => null)])
+  return { full, preview: makePreview(full), width: full.width, height: full.height, name: baseName(name), exif }
 }
 
 export function loadImageFromFile(file: File) {

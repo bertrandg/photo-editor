@@ -14,7 +14,10 @@ Démo : https://bertrandg.github.io/photo-editor/ — déployée automatiquement
 
 1. **Import** : fichier local (clic ou glisser-déposer) ou URL web (le serveur doit autoriser le CORS).
 2. **Éditeur** : Recadrer · Ajuster · Annoter, avec annuler/rétablir (⌘Z / ⇧⌘Z) et Avant/Après (maintenir le bouton).
-3. **Export** : « Enregistrer » → téléchargement JPEG / PNG / WebP en pleine résolution.
+3. **Export** : « Enregistrer » → téléchargement JPEG en pleine résolution.
+   Les métadonnées EXIF d'une photo JPEG (appareil, date, GPS…) sont conservées :
+   orientation remise à 1 (la rotation est déjà appliquée aux pixels), dimensions
+   mises à jour, miniature intégrée supprimée.
 
 ### Grandes images
 
@@ -33,5 +36,6 @@ Démo : https://bertrandg.github.io/photo-editor/ — déployée automatiquement
 | `tools/crop/crop-panel.tsx` | Rotation 90°, symétries, redressement et `RATIO_PRESETS` (formats de recadrage). |
 | `render/transform.ts` | Géométrie (rotation, miroir, redressement avec zoom auto), partagée par l'aperçu et l'export. |
 | `render/export.ts` | Rendu pleine résolution + Web Worker (`adjust.worker.ts`). |
+| `render/exif.ts` | Lecture des EXIF à l'import et réinjection dans le JPEG exporté (`piexifjs`). |
 | `use-history.ts` | Undo/redo (les gestes continus comme un slider ne créent qu'une entrée). |
 | `stage/` | Zone centrale : `CropStage` (cadre de recadrage) et `ResultStage` (rendu final + calques déplaçables). |

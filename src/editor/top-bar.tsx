@@ -1,18 +1,10 @@
-import { ChevronDownIcon, Loader2Icon, Redo2Icon, Undo2Icon, XIcon } from "lucide-react"
+import { DownloadIcon, Loader2Icon, Redo2Icon, Undo2Icon, XIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Separator } from "@/components/ui/separator"
 import { useEditor } from "./editor-context"
-import { downloadBlob, EXPORT_FORMATS, exportImage, type ExportFormat } from "./render/export"
+import { downloadBlob, EXPORT_EXTENSION, exportImage } from "./render/export"
 
 export function TopBar({ onClose }: { onClose: () => void }) {
   const { image, state, undo, redo, canUndo, canRedo } = useEditor()
@@ -30,16 +22,20 @@ export function TopBar({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener("keydown", onKey)
   }, [undo, redo])
 
-  const download = async (type: ExportFormat) => {
-    const format = EXPORT_FORMATS.find((f) => f.type === type)!
+  const download = async () => {
     setExporting(true)
     const id = toast.loading("Génération de l'image en pleine résolution…")
     try {
-      const { blob, width, height, downscaled } = await exportImage(image, state, type)
-      downloadBlob(blob, `${image.name}-edit.${format.ext}`)
+      const { blob, width, height, downscaled, exif } = await exportImage(image, state)
+      downloadBlob(blob, `${image.name}-edit.${EXPORT_EXTENSION}`)
+      const notes = [
+        exif === "kept" && "Métadonnées EXIF conservées.",
+        exif === "failed" && "Les métadonnées EXIF n'ont pas pu être conservées.",
+        downscaled && "L'image a été réduite pour respecter les limites du navigateur.",
+      ].filter(Boolean)
       toast.success(`Image téléchargée (${width} × ${height} px)`, {
         id,
-        description: downscaled ? "L'image a été réduite pour respecter les limites du navigateur." : undefined,
+        description: notes.length ? notes.join(" ") : undefined,
       })
     } catch (e) {
       console.error(e)
@@ -63,28 +59,10 @@ export function TopBar({ onClose }: { onClose: () => void }) {
         </Button>
       </div>
       <Separator orientation="vertical" className="mx-3 h-8!" />
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button size="lg" className="h-10 px-4" disabled={exporting}>
-              {exporting && <Loader2Icon className="animate-spin" />}
-              Enregistrer
-              <ChevronDownIcon />
-            </Button>
-          }
-        />
-        <DropdownMenuContent align="end" className="w-52">
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>Télécharger en</DropdownMenuLabel>
-            {EXPORT_FORMATS.map((f) => (
-              <DropdownMenuItem key={f.type} onClick={() => download(f.type)}>
-                {f.label}
-                <span className="ml-auto text-xs text-muted-foreground">.{f.ext}</span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Button size="lg" className="h-10 px-4" disabled={exporting} onClick={download} title="Télécharger en JPEG">
+        {exporting ? <Loader2Icon className="animate-spin" /> : <DownloadIcon />}
+        Enregistrer
+      </Button>
     </header>
   )
 }

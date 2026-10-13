@@ -1,17 +1,14 @@
 import { hasActiveAdjustments } from "../adjustments"
 import { drawOverlays } from "../overlays/kinds"
 import type { EditorState, LoadedImage } from "../types"
+import { insertExif } from "./exif"
 import { cropToPixels } from "./geometry"
 import { applyTransform, transformedSize } from "./transform"
 import type { AdjustRequest } from "./adjust.worker"
 
-export type ExportFormat = "image/png" | "image/jpeg" | "image/webp"
-
-export const EXPORT_FORMATS: { type: ExportFormat; label: string; ext: string }[] = [
-  { type: "image/jpeg", label: "JPEG", ext: "jpg" },
-  { type: "image/png", label: "PNG", ext: "png" },
-  { type: "image/webp", label: "WebP", ext: "webp" },
-]
+/** Export is JPEG only: it is the format that carries the EXIF metadata. */
+export const EXPORT_EXTENSION = "jpg"
+const JPEG_QUALITY = 0.92
 
 /** Conservative canvas limits that work in all modern desktop browsers. */
 const MAX_CANVAS_DIM = 16384
@@ -91,17 +88,18 @@ async function renderAt(image: LoadedImage, state: EditorState, scale: number) {
   return canvas
 }
 
-function toBlob(canvas: HTMLCanvasElement, type: ExportFormat, quality: number) {
+function toJpeg(canvas: HTMLCanvasElement) {
   return new Promise<Blob>((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Encodage impossible"))), type, quality),
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Encodage impossible"))), "image/jpeg", JPEG_QUALITY),
   )
 }
 
 /**
  * Renders the edited image at full resolution (downscaled only if it exceeds
- * the browser canvas limits) and returns the encoded file.
+ * the browser canvas limits) and returns the JPEG file, with the EXIF metadata
+ * of the source photo when it had some.
  */
-export async function exportImage(image: LoadedImage, state: EditorState, type: ExportFormat, quality = 0.92) {
+export async function exportImage(image: LoadedImage, state: EditorState) {
   const crop = cropOf(image, state)
   let scale = Math.min(
     1,
@@ -111,17 +109,32 @@ export async function exportImage(image: LoadedImage, state: EditorState, type: 
   )
 
   // Retry at lower resolution if the browser cannot allocate the canvas.
+  let rendered: { blob: Blob; width: number; height: number }
   for (let attempt = 0; ; attempt++) {
     try {
       const canvas = await renderAt(image, state, scale)
-      const blob = await toBlob(canvas, type, quality)
+      const { width, height } = canvas
+      const blob = await toJpeg(canvas)
       canvas.width = canvas.height = 0 // release memory early
-      return { blob, width: Math.round(crop.width * scale), height: Math.round(crop.height * scale), downscaled: scale < 1 }
+      rendered = { blob, width, height }
+      break
     } catch (err) {
       if (attempt >= 3) throw err
       scale *= 0.7
     }
   }
+
+  let exif: "kept" | "none" | "failed" = "none"
+  if (image.exif) {
+    try {
+      rendered.blob = await insertExif(rendered.blob, image.exif, rendered.width, rendered.height)
+      exif = "kept"
+    } catch (err) {
+      console.warn("EXIF non conservés", err)
+      exif = "failed"
+    }
+  }
+  return { ...rendered, downscaled: scale < 1, exif }
 }
 
 export function downloadBlob(blob: Blob, filename: string) {
