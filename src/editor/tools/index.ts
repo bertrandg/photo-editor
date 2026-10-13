@@ -1,13 +1,15 @@
 import type { LucideIcon } from "lucide-react"
-import { CropIcon, PencilIcon, SlidersHorizontalIcon } from "lucide-react"
+import { CropIcon, PencilIcon, SlidersHorizontalIcon, WandSparklesIcon } from "lucide-react"
 import type { ComponentType } from "react"
 import { DEFAULT_ADJUSTMENTS } from "../adjustments"
+import { NO_FILTER } from "../editor-context"
 import { FULL_CROP } from "../render/geometry"
 import { IDENTITY_TRANSFORM } from "../render/transform"
 import type { EditorState } from "../types"
 import { AdjustPanel } from "./adjust/adjust-panel"
 import { AnnotatePanel } from "./annotate/annotate-panel"
 import { CropPanel } from "./crop/crop-panel"
+import { FiltersPanel } from "./filters/filters-panel"
 
 /**
  * A tool = one tab of the left sidebar.
@@ -42,6 +44,14 @@ export const TOOLS: EditorTool[] = [
     Panel: AdjustPanel,
     stage: "result",
     reset: (s) => ({ ...s, adjustments: DEFAULT_ADJUSTMENTS }),
+  },
+  {
+    id: "filters",
+    label: "Filtres",
+    icon: WandSparklesIcon,
+    Panel: FiltersPanel,
+    stage: "result",
+    reset: (s) => ({ ...s, filter: NO_FILTER }),
   },
   {
     id: "annotate",

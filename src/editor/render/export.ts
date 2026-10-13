@@ -1,5 +1,5 @@
-import { hasActiveAdjustments } from "../adjustments"
 import { drawOverlays } from "../overlays/kinds"
+import { hasActiveLook, type Look, type PixelRegion } from "../pipeline"
 import type { EditorState, LoadedImage } from "../types"
 import { insertExif } from "./exif"
 import { cropToPixels } from "./geometry"
@@ -21,7 +21,7 @@ const STRIP_PAD = 2
 let worker: Worker | null = null
 let nextId = 0
 
-function adjustInWorker(data: ImageData, values: Record<string, number>): Promise<Uint8ClampedArray> {
+function adjustInWorker(data: ImageData, look: Look, region: PixelRegion): Promise<Uint8ClampedArray> {
   worker ??= new Worker(new URL("./adjust.worker.ts", import.meta.url), { type: "module" })
   const w = worker
   const id = nextId++
@@ -40,7 +40,7 @@ function adjustInWorker(data: ImageData, values: Record<string, number>): Promis
     w.addEventListener("message", onMessage)
     w.addEventListener("error", onError)
     const buffer = data.data.buffer as ArrayBuffer
-    const req: AdjustRequest = { id, buffer, width: data.width, height: data.height, values }
+    const req: AdjustRequest = { id, buffer, width: data.width, height: data.height, look, region }
     w.postMessage(req, [buffer])
   })
 }
@@ -70,12 +70,15 @@ async function renderAt(image: LoadedImage, state: EditorState, scale: number) {
   ctx.drawImage(image.full, 0, 0, image.width, image.height)
   ctx.restore()
 
-  if (hasActiveAdjustments(state.adjustments)) {
+  const look: Look = { adjustments: state.adjustments, filter: state.filter }
+  if (hasActiveLook(look)) {
     for (let y = 0; y < outH; y += STRIP_ROWS) {
       const top = Math.max(0, y - STRIP_PAD)
       const bottom = Math.min(outH, y + STRIP_ROWS + STRIP_PAD)
       const strip = ctx.getImageData(0, top, outW, bottom - top)
-      const processed = await adjustInWorker(strip, state.adjustments)
+      // The strip starts at row `top` of the output frame (for vignettes).
+      const region = { offsetX: 0, offsetY: top, frameW: outW, frameH: outH }
+      const processed = await adjustInWorker(strip, look, region)
       const rows = Math.min(STRIP_ROWS, outH - y)
       const offset = (y - top) * outW * 4
       const body = new ImageData(processed.slice(offset, offset + rows * outW * 4), outW, rows)

@@ -1,4 +1,5 @@
 import type { Overlay } from "./overlays/types"
+import type { FilterState } from "./pipeline"
 import type { ExifData } from "./render/exif"
 import type { ImageTransform } from "./render/transform"
 
@@ -35,5 +36,7 @@ export interface EditorState {
   /** Identifier of the selected ratio preset (for the UI). */
   cropPreset: string
   adjustments: Record<string, number>
+  /** One filter at most, applied before the adjustments. */
+  filter: FilterState
   overlays: Overlay[]
 }

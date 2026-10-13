@@ -1,22 +1,22 @@
 import { EyeIcon } from "lucide-react"
-import { useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { useEditor } from "../editor-context"
-import { renderTransformed } from "../render/transform"
 import { getTool } from "../tools"
 import { CropStage } from "./crop-stage"
 import { ResultStage } from "./result-stage"
-import { useAdjustedPreview } from "./use-adjusted-preview"
+import { useLookPreview } from "./use-look-preview"
 
 export function Stage() {
-  const { image, state, activeTool, showOriginal, setShowOriginal } = useEditor()
-  const { transform } = state
-  // Transformed (rotated / mirrored / straightened) preview, before adjustments.
-  const oriented = useMemo(
-    () => renderTransformed(image.preview, image.preview.width, image.preview.height, transform),
-    [image.preview, transform],
+  const { image, orientedPreview: oriented, state, activeTool, showOriginal, setShowOriginal } = useEditor()
+  const { crop } = state
+  const frame = { x: crop.x / 100, y: crop.y / 100, width: crop.width / 100, height: crop.height / 100 }
+  const { canvas, version } = useLookPreview(
+    oriented,
+    state.adjustments,
+    state.filter,
+    image.preview.width / image.width,
+    frame,
   )
-  const { canvas, version } = useAdjustedPreview(oriented, state.adjustments, image.preview.width / image.width)
   const tool = getTool(activeTool)
   const source = showOriginal ? oriented : canvas
 

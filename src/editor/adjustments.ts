@@ -5,10 +5,12 @@
  * To add a new adjustment, append an entry to `ADJUSTMENTS` — the panel, the
  * preview and the export pick it up automatically. `process` (CPU) is used for
  * the export; `gpu` (GLSL) makes the live preview fast and must match it.
+ * The whole chain (filter + adjustments) is assembled in `pipeline.ts`.
  *
  * This file must stay free of DOM/React imports: it is also loaded by the
  * export Web Worker.
  */
+import type { GpuSnippet, StageProcess } from "./pipeline"
 
 export interface AdjustmentGroup {
   id: string
@@ -29,7 +31,7 @@ export interface AdjustmentDef {
    * `scale` is the ratio between the processed image and the full resolution
    * (lets kernel-based effects stay consistent between preview and export).
    */
-  process: (data: Uint8ClampedArray, width: number, height: number, value: number, scale: number) => void
+  process: StageProcess
   /**
    * GLSL equivalent of `process` for the live preview (render/gpu-preview.ts).
    * The snippet updates `vec3 c` (RGB, 0–1) and can read `float v` (the
@@ -37,7 +39,7 @@ export interface AdjustmentDef {
    * the color of the pixel at offset `o` (in pixels) with all the previous
    * adjustments applied. Without `gpu`, the preview falls back to the CPU.
    */
-  gpu?: { kind: "pixel" | "kernel"; glsl: string }
+  gpu?: GpuSnippet
 }
 
 export const ADJUSTMENT_GROUPS: AdjustmentGroup[] = [
@@ -181,21 +183,3 @@ export const ADJUSTMENTS: AdjustmentDef[] = [
 export const DEFAULT_ADJUSTMENTS: Record<string, number> = Object.fromEntries(
   ADJUSTMENTS.map((a) => [a.id, a.default]),
 )
-
-export function hasActiveAdjustments(values: Record<string, number>) {
-  return ADJUSTMENTS.some((a) => (values[a.id] ?? a.default) !== a.default)
-}
-
-/** Runs every non-neutral adjustment, in registry order. */
-export function applyAdjustments(
-  data: Uint8ClampedArray,
-  width: number,
-  height: number,
-  values: Record<string, number>,
-  scale = 1,
-) {
-  for (const adj of ADJUSTMENTS) {
-    const value = values[adj.id] ?? adj.default
-    if (value !== adj.default) adj.process(data, width, height, value, scale)
-  }
-}

@@ -1,9 +1,12 @@
-import { createContext, useContext, useState, type ReactNode } from "react"
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react"
 import { DEFAULT_ADJUSTMENTS } from "./adjustments"
 import { FULL_CROP } from "./render/geometry"
-import { IDENTITY_TRANSFORM } from "./render/transform"
+import type { FilterState } from "./pipeline"
+import { IDENTITY_TRANSFORM, renderTransformed } from "./render/transform"
 import type { EditorState, LoadedImage } from "./types"
 import { useHistory } from "./use-history"
+
+export const NO_FILTER: FilterState = { id: null, intensity: 100 }
 
 export const INITIAL_STATE: EditorState = {
   transform: IDENTITY_TRANSFORM,
@@ -11,6 +14,7 @@ export const INITIAL_STATE: EditorState = {
   cropAspect: undefined,
   cropPreset: "free",
   adjustments: DEFAULT_ADJUSTMENTS,
+  filter: NO_FILTER,
   overlays: [],
 }
 
@@ -18,6 +22,8 @@ type History = ReturnType<typeof useHistory<EditorState>>
 
 interface EditorContextValue extends Omit<History, "set"> {
   image: LoadedImage
+  /** Downscaled preview with the geometry (rotation, mirror…) applied. */
+  orientedPreview: HTMLCanvasElement
   setState: History["set"]
   activeTool: string
   setActiveTool: (id: string) => void
@@ -46,10 +52,16 @@ export function EditorProvider({
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null)
   const [showOriginal, setShowOriginal] = useState(false)
   const [showGrid, setShowGrid] = useState(false)
+  const { transform } = history.state
+  const orientedPreview = useMemo(
+    () => renderTransformed(image.preview, image.preview.width, image.preview.height, transform),
+    [image.preview, transform],
+  )
 
   const value: EditorContextValue = {
     ...history,
     image,
+    orientedPreview,
     setState: set,
     activeTool,
     setActiveTool,

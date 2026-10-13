@@ -1,10 +1,10 @@
-import { ADJUSTMENTS, type AdjustmentDef } from "../adjustments"
+import { activeStages, type Look, type Stage } from "../pipeline"
 
 /**
- * Live preview of the adjustments on the GPU (WebGL 1, supported by virtually
- * every browser, old phones included). All the active adjustments run in a
- * single shader pass, generated from the `gpu` snippets of the registry, so a
- * slider update costs ~1–2 ms instead of tens or hundreds on the CPU.
+ * Live preview of the look (filter + adjustments) on the GPU (WebGL 1,
+ * supported by virtually every browser, old phones included). All the active
+ * stages run in a single shader pass, generated from their `gpu` snippets, so
+ * a slider update costs ~1–2 ms instead of tens or hundreds on the CPU.
  *
  * The export keeps using the CPU implementation (`process`), which has no
  * texture size limit.
@@ -19,24 +19,27 @@ void main() {
   gl_Position = vec4(a_pos, 0.0, 1.0);
 }`
 
-const uniformName = (a: AdjustmentDef) => `u_${a.id.replace(/\W/g, "_")}`
+const uniformName = (s: Stage) => `u_${s.key.replace(/\W/g, "_")}`
 
 /**
- * Builds the fragment shader. Adjustments are chained in registry order; each
- * kernel adjustment starts a new function so it can sample its neighbors
- * through everything that came before it.
+ * Builds the fragment shader. Stages are chained in pipeline order; each
+ * kernel stage starts a new function so it can sample its neighbors through
+ * everything that came before it.
  */
-function buildFragment(active: AdjustmentDef[]) {
+function buildFragment(active: Stage[]) {
   const functions: string[] = []
-  let body: string[] = ["vec3 c = texture2D(u_image, uv).rgb;"]
+  // `p`: position in the output frame (the crop), for vignettes & co.
+  const position = "vec2 p = (uv - u_frame.xy) / u_frame.zw;"
+  let body: string[] = [position, "vec3 c = texture2D(u_image, uv).rgb;"]
   let fn = 0
 
-  for (const adj of active) {
-    const block = `{ float v = ${uniformName(adj)}; ${adj.gpu!.glsl} } c = clamp(c, 0.0, 1.0);`
-    if (adj.gpu!.kind === "kernel") {
+  for (const stage of active) {
+    const block = `{ float v = ${uniformName(stage)}; ${stage.gpu!.glsl} } c = clamp(c, 0.0, 1.0);`
+    if (stage.gpu!.kind === "kernel") {
       functions.push(`vec3 f${fn}(vec2 uv) {\n${body.join("\n")}\nreturn c;\n}`)
       fn++
       body = [
+        position,
         `vec3 c = f${fn - 1}(uv);`,
         `#define src(o) f${fn - 1}(uv + (o) * u_texel)`,
         block,
@@ -56,6 +59,7 @@ precision mediump float;
 #endif
 uniform sampler2D u_image;
 uniform vec2 u_texel;
+uniform vec4 u_frame;
 uniform float scale;
 ${active.map((a) => `uniform float ${uniformName(a)};`).join("\n")}
 varying vec2 v_uv;
@@ -63,6 +67,14 @@ ${functions.join("\n")}
 void main() {
   gl_FragColor = vec4(f${fn}(v_uv), texture2D(u_image, v_uv).a);
 }`
+}
+
+/** Rectangle in fractions (0–1) of the source image. */
+export interface Frame {
+  x: number
+  y: number
+  width: number
+  height: number
 }
 
 interface CompiledProgram {
@@ -116,8 +128,8 @@ export class GpuPreview {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
   }
 
-  private compile(active: AdjustmentDef[]): CompiledProgram {
-    const key = active.map((a) => a.id).join(",")
+  private compile(active: Stage[]): CompiledProgram {
+    const key = active.map((s) => s.key).join(",")
     const cached = this.programs.get(key)
     if (cached) return cached
 
@@ -137,7 +149,7 @@ export class GpuPreview {
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) ?? "link")
 
     const uniforms = new Map<string, WebGLUniformLocation | null>()
-    for (const name of ["u_image", "u_texel", "scale", ...active.map(uniformName)]) {
+    for (const name of ["u_image", "u_texel", "u_frame", "scale", ...active.map(uniformName)]) {
       uniforms.set(name, gl.getUniformLocation(program, name))
     }
     const compiled = { program, uniforms }
@@ -146,16 +158,17 @@ export class GpuPreview {
   }
 
   /**
-   * Renders `source` with the adjustments into `this.canvas`.
-   * Returns `false` when the GPU cannot handle it (the caller uses the CPU).
+   * Renders `source` with the look into `this.canvas`. `frame` is the output
+   * frame (crop) in fractions of the source. Returns `false` when the GPU
+   * cannot handle it (the caller then uses the CPU).
    */
-  render(source: HTMLCanvasElement, values: Record<string, number>, scale: number): boolean {
+  render(source: HTMLCanvasElement, look: Look, scale: number, frame: Frame): boolean {
     const gl = this.gl
     if (this.lost || gl.isContextLost()) return false
     if (source.width > this.maxTextureSize || source.height > this.maxTextureSize) return false
 
-    const active = ADJUSTMENTS.filter((a) => (values[a.id] ?? a.default) !== a.default)
-    if (active.some((a) => !a.gpu)) return false
+    const active = activeStages(look)
+    if (active.some((s) => !s.gpu)) return false
 
     try {
       const { program, uniforms } = this.compile(active)
@@ -177,8 +190,9 @@ export class GpuPreview {
       gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
       gl.uniform1i(uniforms.get("u_image")!, 0)
       gl.uniform2f(uniforms.get("u_texel")!, 1 / source.width, 1 / source.height)
+      gl.uniform4f(uniforms.get("u_frame")!, frame.x, frame.y, frame.width, frame.height)
       gl.uniform1f(uniforms.get("scale")!, scale)
-      for (const a of active) gl.uniform1f(uniforms.get(uniformName(a))!, values[a.id])
+      for (const s of active) gl.uniform1f(uniforms.get(uniformName(s))!, s.value)
 
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
       return true
