@@ -1,13 +1,16 @@
-import { CopyIcon, ImageIcon, Trash2Icon, TypeIcon } from "lucide-react"
+import { CopyIcon, Trash2Icon } from "lucide-react"
 import { useEffect, useRef, type ComponentType } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useEditor } from "../../editor-context"
-import type { ImageOverlay, Overlay, TextOverlay } from "../../overlays/types"
+import type { BlurOverlay, ImageOverlay, Overlay, TextOverlay } from "../../overlays/types"
+import { cropToPixels } from "../../render/geometry"
+import { transformedSize } from "../../render/transform"
 import { decodeBlob } from "../../render/load-image"
+import type { EditorState, LoadedImage } from "../../types"
 import { PanelSection, SliderField } from "../panel-section"
-import { OVERLAY_FORMS, OVERLAY_LABELS, type OverlayFormProps } from "./overlay-forms"
+import { OVERLAY_FORMS, OVERLAY_LABELS, OVERLAY_META, type OverlayFormProps } from "./overlay-forms"
 import { PositionGrid } from "./position-grid"
 
 const uid = () => Math.random().toString(36).slice(2, 10)
@@ -31,8 +34,27 @@ function newText(): TextOverlay {
   }
 }
 
+/** Face-shaped ellipse (a bit taller than wide), centered. */
+function newBlur(image: LoadedImage, state: EditorState): BlurOverlay {
+  const size = transformedSize(state.transform, image.width, image.height)
+  const crop = cropToPixels(state.crop, size.width, size.height, state.cropAspect)
+  const width = 20 // % of the output width
+  return {
+    id: uid(),
+    kind: "blur",
+    x: 0.5,
+    y: 0.5,
+    size: width,
+    heightPct: Math.min(100, ((width * crop.width) / crop.height) * 1.25),
+    opacity: 1,
+    style: "blur",
+    shape: "ellipse",
+    strength: 60,
+  }
+}
+
 export function AnnotatePanel() {
-  const { state, setState, commit, selectedOverlayId, setSelectedOverlayId } = useEditor()
+  const { image, state, setState, commit, selectedOverlayId, setSelectedOverlayId } = useEditor()
   const fileRef = useRef<HTMLInputElement>(null)
   const selected = state.overlays.find((o) => o.id === selectedOverlayId) ?? null
 
@@ -92,14 +114,18 @@ export function AnnotatePanel() {
   return (
     <div>
       <PanelSection title="Ajouter">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <Button variant="outline" className="h-16 flex-col gap-1.5" onClick={() => add(newText())}>
-            <TypeIcon className="size-5!" />
+            <OVERLAY_META.text.icon className="size-5!" />
             Texte
           </Button>
           <Button variant="outline" className="h-16 flex-col gap-1.5" onClick={() => fileRef.current?.click()}>
-            <ImageIcon className="size-5!" />
+            <OVERLAY_META.image.icon className="size-5!" />
             Image
+          </Button>
+          <Button variant="outline" className="h-16 flex-col gap-1.5" onClick={() => add(newBlur(image, state))}>
+            <OVERLAY_META.blur.icon className="size-5!" />
+            Flou
           </Button>
           <input
             ref={fileRef}
@@ -118,7 +144,7 @@ export function AnnotatePanel() {
         <PanelSection title="Calques">
           <ul className="-mx-2 flex flex-col gap-0.5">
             {[...state.overlays].reverse().map((o) => {
-              const Icon = o.kind === "text" ? TypeIcon : ImageIcon
+              const Icon = OVERLAY_META[o.kind].icon
               const label = (OVERLAY_LABELS[o.kind] as (o: Overlay) => string)(o)
               return (
                 <li key={o.id}>
@@ -141,7 +167,7 @@ export function AnnotatePanel() {
       )}
 
       {selected && Form && (
-        <PanelSection title={selected.kind === "text" ? "Texte sélectionné" : "Image sélectionnée"}>
+        <PanelSection title={OVERLAY_META[selected.kind].title}>
           <Form
             key={selected.id}
             overlay={selected}
@@ -179,7 +205,7 @@ export function AnnotatePanel() {
 
       {state.overlays.length === 0 && (
         <p className="px-5 py-2 text-sm text-muted-foreground">
-          Ajoutez un texte ou une image (logo, filigrane…) par-dessus votre photo.
+          Ajoutez un texte, une image (logo, filigrane…) ou une zone floue (visage, plaque…) par-dessus votre photo.
         </p>
       )}
     </div>

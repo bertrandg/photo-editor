@@ -1,11 +1,16 @@
-import type { ImageOverlay, Overlay, OverlayKind, TextOverlay } from "./types"
+import type { BlurOverlay, ImageOverlay, Overlay, OverlayKind, TextOverlay } from "./types"
 
 /** Rendering contract for an overlay kind. Add a kind = add an entry here. */
 interface OverlayRenderer<T extends Overlay> {
-  /** Size in pixels of the overlay for an output of width `outW`. */
-  measure: (ctx: CanvasRenderingContext2D, overlay: T, outW: number) => { width: number; height: number }
-  /** Draws the overlay inside the box (top-left at `x`, `y`). */
+  /** Size in pixels of the overlay for an output of `outW` × `outH`. */
+  measure: (ctx: CanvasRenderingContext2D, overlay: T, outW: number, outH: number) => { width: number; height: number }
+  /**
+   * Draws the overlay inside the box (top-left at `x`, `y`). `ctx` already
+   * holds the image and the overlays below, which a renderer may read back.
+   */
   draw: (ctx: CanvasRenderingContext2D, overlay: T, box: Box, outW: number) => void
+  /** "free": the resize handle changes width and height independently. */
+  resize?: "uniform" | "free"
 }
 
 export interface Box {
@@ -79,9 +84,96 @@ const imageRenderer: OverlayRenderer<ImageOverlay> = {
   },
 }
 
+/** Scratch canvases reused between frames (blur runs on every redraw). */
+const scratch: HTMLCanvasElement[] = []
+function scratchCtx(i: number, width: number, height: number) {
+  const c = (scratch[i] ??= document.createElement("canvas"))
+  if (c.width !== width || c.height !== height) {
+    c.width = width
+    c.height = height
+  }
+  const ctx = c.getContext("2d")!
+  ctx.clearRect(0, 0, width, height)
+  return ctx
+}
+
+const blurRenderer: OverlayRenderer<BlurOverlay> = {
+  resize: "free",
+  measure(_ctx, o, outW, outH) {
+    return { width: (o.size / 100) * outW, height: (o.heightPct / 100) * outH }
+  },
+  draw(ctx, o, box, outW) {
+    const canvas = ctx.canvas
+    const x0 = Math.max(0, Math.floor(box.x))
+    const y0 = Math.max(0, Math.floor(box.y))
+    const x1 = Math.min(canvas.width, Math.ceil(box.x + box.width))
+    const y1 = Math.min(canvas.height, Math.ceil(box.y + box.height))
+    if (x1 - x0 < 1 || y1 - y0 < 1) return
+
+    // Strength is relative to the output width: same look in preview & export.
+    const radius = Math.max(1.5, (o.strength / 100) * 0.04 * outW)
+
+    // Clip to the shape (in the overlay box, not the clamped area).
+    ctx.beginPath()
+    if (o.shape === "ellipse") {
+      ctx.ellipse(box.x + box.width / 2, box.y + box.height / 2, box.width / 2, box.height / 2, 0, 0, Math.PI * 2)
+    } else {
+      ctx.rect(box.x, box.y, box.width, box.height)
+    }
+    ctx.clip()
+
+    if (o.style === "pixelate") {
+      // Each block = average of ~radius × radius pixels, nearest-neighbor upscale.
+      const w = x1 - x0
+      const h = y1 - y0
+      const tw = Math.max(1, Math.round(w / radius))
+      const th = Math.max(1, Math.round(h / radius))
+      const small = scratchCtx(0, tw, th)
+      small.imageSmoothingQuality = "high"
+      small.drawImage(canvas, x0, y0, w, h, 0, 0, tw, th)
+      ctx.imageSmoothingEnabled = false
+      ctx.drawImage(small.canvas, 0, 0, tw, th, x0, y0, w, h)
+      return
+    }
+
+    // Pyramid blur: halve the area repeatedly (last step to exactly 1/radius),
+    // then double it back step by step. Each bilinear step smooths the
+    // previous one: close to a gaussian, no blocks, and only a few cheap
+    // drawImage calls. Neighbors around the box are sampled too, so the edges
+    // blend with the surroundings.
+    const pad = Math.ceil(radius * 2)
+    const sx = Math.max(0, x0 - pad)
+    const sy = Math.max(0, y0 - pad)
+    const sw = Math.min(canvas.width, x1 + pad) - sx
+    const sh = Math.min(canvas.height, y1 + pad) - sy
+
+    const sizes: [number, number][] = []
+    for (let f = 2; f < radius; f *= 2) sizes.push([Math.max(1, Math.round(sw / f)), Math.max(1, Math.round(sh / f))])
+    sizes.push([Math.max(1, Math.round(sw / radius)), Math.max(1, Math.round(sh / radius))])
+
+    // Down.
+    sizes.forEach(([w, h], i) => {
+      const c = scratchCtx(i, w, h)
+      c.imageSmoothingQuality = "high"
+      if (i === 0) c.drawImage(canvas, sx, sy, sw, sh, 0, 0, w, h)
+      else c.drawImage(scratch[i - 1], 0, 0, sizes[i - 1][0], sizes[i - 1][1], 0, 0, w, h)
+    })
+    // Up (back through the same sizes), then onto the image.
+    for (let i = sizes.length - 2; i >= 0; i--) {
+      const [w, h] = sizes[i]
+      const c = scratchCtx(i, w, h)
+      c.imageSmoothingQuality = "high"
+      c.drawImage(scratch[i + 1], 0, 0, sizes[i + 1][0], sizes[i + 1][1], 0, 0, w, h)
+    }
+    ctx.imageSmoothingQuality = "high"
+    ctx.drawImage(scratch[0], 0, 0, sizes[0][0], sizes[0][1], sx, sy, sw, sh)
+  },
+}
+
 const RENDERERS: { [K in OverlayKind]: OverlayRenderer<Extract<Overlay, { kind: K }>> } = {
   text: textRenderer,
   image: imageRenderer,
+  blur: blurRenderer,
 }
 
 function rendererFor<T extends Overlay>(o: T) {
@@ -97,7 +189,7 @@ function getMeasureCtx() {
 /** Bounding box of an overlay, in pixels, for an output of `outW` × `outH`. */
 export function getOverlayBox(o: Overlay, outW: number, outH: number, ctx = getMeasureCtx()): Box {
   ctx.save()
-  const { width, height } = rendererFor(o).measure(ctx, o, outW)
+  const { width, height } = rendererFor(o).measure(ctx, o, outW, outH)
   ctx.restore()
   return { x: o.x * outW - width / 2, y: o.y * outH - height / 2, width, height }
 }
@@ -110,4 +202,8 @@ export function drawOverlays(ctx: CanvasRenderingContext2D, overlays: Overlay[],
     rendererFor(o).draw(ctx, o, box, outW)
     ctx.restore()
   }
+}
+
+export function overlayResizeMode(o: Overlay) {
+  return rendererFor(o).resize ?? "uniform"
 }

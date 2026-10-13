@@ -1,7 +1,7 @@
 import { useRef, type PointerEvent as ReactPointerEvent } from "react"
 import { cn } from "@/lib/utils"
 import { useEditor } from "../editor-context"
-import { getOverlayBox } from "../overlays/kinds"
+import { getOverlayBox, overlayResizeMode } from "../overlays/kinds"
 import type { Overlay } from "../overlays/types"
 
 interface Props {
@@ -12,6 +12,8 @@ interface Props {
 type Gesture =
   | { kind: "move"; id: string; startX: number; startY: number; ox: number; oy: number }
   | { kind: "resize"; id: string; cx: number; cy: number; startDist: number; startSize: number }
+  /** Independent width / height (blur areas): the handle follows the pointer. */
+  | { kind: "resize-free"; id: string; cx: number; cy: number }
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 
@@ -40,6 +42,10 @@ export function OverlayLayer({ width, height }: Props) {
     const rect = layerRef.current!.getBoundingClientRect()
     const cx = rect.left + o.x * width
     const cy = rect.top + o.y * height
+    if (overlayResizeMode(o) === "free") {
+      gesture.current = { kind: "resize-free", id: o.id, cx, cy }
+      return
+    }
     gesture.current = {
       kind: "resize",
       id: o.id,
@@ -58,6 +64,12 @@ export function OverlayLayer({ width, height }: Props) {
         x: clamp(g.ox + (e.clientX - g.startX) / width, 0, 1),
         y: clamp(g.oy + (e.clientY - g.startY) / height, 0, 1),
       })
+    } else if (g.kind === "resize-free") {
+      // Center stays put: the box is twice the distance to the pointer.
+      update(g.id, {
+        size: clamp((200 * Math.abs(e.clientX - g.cx)) / width, 1, 200),
+        heightPct: clamp((200 * Math.abs(e.clientY - g.cy)) / height, 1, 200),
+      } as Partial<Overlay>)
     } else {
       const dist = Math.hypot(e.clientX - g.cx, e.clientY - g.cy)
       update(g.id, { size: clamp((g.startSize * dist) / g.startDist, 0.5, 300) })

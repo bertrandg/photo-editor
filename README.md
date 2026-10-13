@@ -36,7 +36,7 @@ Démo : https://bertrandg.github.io/photo-editor/ — déployée automatiquement
 | `adjustments.ts` | **Registre des réglages** : métadonnées UI, traitement CPU (`process`, export) et extrait GLSL (`gpu`, aperçu). Le panneau « Ajuster », l'aperçu et l'export sont générés à partir de ce tableau. |
 | `filters.ts` | **Registre des filtres** : recettes d'opérations (matrice, contraste, virage, vignettage…), chacune compilée en GLSL (aperçu) et en JS (export). |
 | `pipeline.ts` | Enchaînement filtre → réglages, partagé par le GPU, le repli CPU et le worker d'export. |
-| `overlays/kinds.ts` | Rendu canvas des calques (texte, image). Ajouter un type = un renderer ici + un formulaire dans `tools/annotate/overlay-forms.tsx`. |
+| `overlays/kinds.ts` | Rendu canvas des calques (texte, image, flou/pixellisation). Ajouter un type = un renderer ici + un formulaire dans `tools/annotate/overlay-forms.tsx`. |
 | `tools/crop/crop-panel.tsx` | Rotation 90°, symétries, redressement et `RATIO_PRESETS` (formats de recadrage). |
 | `render/transform.ts` | Géométrie (rotation, miroir, redressement avec zoom auto), partagée par l'aperçu et l'export. |
 | `render/export.ts` | Rendu pleine résolution + Web Worker (`adjust.worker.ts`). |

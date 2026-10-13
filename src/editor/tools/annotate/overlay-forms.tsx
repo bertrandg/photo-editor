@@ -1,4 +1,16 @@
-import { AlignCenterIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, ItalicIcon } from "lucide-react"
+import {
+  AlignCenterIcon,
+  AlignLeftIcon,
+  AlignRightIcon,
+  BoldIcon,
+  CircleIcon,
+  ImageIcon,
+  ItalicIcon,
+  ScanFaceIcon,
+  SquareIcon,
+  TypeIcon,
+  type LucideIcon,
+} from "lucide-react"
 import type { ComponentType } from "react"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -6,7 +18,7 @@ import { Toggle } from "@/components/ui/toggle"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { cn } from "@/lib/utils"
 import { FONT_FAMILIES } from "../../overlays/kinds"
-import type { ImageOverlay, Overlay, OverlayKind, TextOverlay } from "../../overlays/types"
+import type { BlurOverlay, ImageOverlay, Overlay, OverlayKind, TextOverlay } from "../../overlays/types"
 import { SliderField } from "../panel-section"
 
 export interface OverlayFormProps<T extends Overlay> {
@@ -203,13 +215,95 @@ function ImageThumb({ bitmap }: { bitmap: ImageBitmap }) {
   )
 }
 
+function BlurForm({ overlay, onChange, onCommit }: OverlayFormProps<BlurOverlay>) {
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <Label className="font-normal">Effet</Label>
+        <ToggleGroup
+          value={[overlay.style]}
+          onValueChange={(v) => v[0] && onChange({ style: v[0] as BlurOverlay["style"] })}
+          variant="outline"
+          size="sm"
+          spacing={0}
+          className="w-full"
+        >
+          <ToggleGroupItem value="blur" className="flex-1">
+            Flou
+          </ToggleGroupItem>
+          <ToggleGroupItem value="pixelate" className="flex-1">
+            Pixels
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label className="font-normal">Forme</Label>
+        <ToggleGroup
+          value={[overlay.shape]}
+          onValueChange={(v) => v[0] && onChange({ shape: v[0] as BlurOverlay["shape"] })}
+          variant="outline"
+          size="sm"
+          spacing={0}
+          className="w-full"
+        >
+          <ToggleGroupItem value="ellipse" className="flex-1">
+            <CircleIcon />
+            Ellipse
+          </ToggleGroupItem>
+          <ToggleGroupItem value="rect" className="flex-1">
+            <SquareIcon />
+            Rectangle
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+      <SliderField
+        label="Intensité"
+        value={overlay.strength}
+        min={1}
+        max={100}
+        onChange={(strength) => onChange({ strength }, { transient: true })}
+        onCommit={onCommit}
+      />
+      <SliderField
+        label="Largeur"
+        unit="%"
+        value={overlay.size}
+        min={1}
+        max={100}
+        step={0.5}
+        onChange={(size) => onChange({ size }, { transient: true })}
+        onCommit={onCommit}
+      />
+      <SliderField
+        label="Hauteur"
+        unit="%"
+        value={overlay.heightPct}
+        min={1}
+        max={100}
+        step={0.5}
+        onChange={(heightPct) => onChange({ heightPct }, { transient: true })}
+        onCommit={onCommit}
+      />
+    </>
+  )
+}
+
 /** Kind-specific settings form. Add a kind = add a form here. */
 export const OVERLAY_FORMS: { [K in OverlayKind]: ComponentType<OverlayFormProps<Extract<Overlay, { kind: K }>>> } = {
   text: TextForm,
   image: ImageForm,
+  blur: BlurForm,
 }
 
 export const OVERLAY_LABELS: { [K in OverlayKind]: (o: Extract<Overlay, { kind: K }>) => string } = {
   text: (o) => o.text.split("\n")[0] || "Texte",
   image: (o) => o.name,
+  blur: (o) => (o.style === "pixelate" ? "Pixellisation" : "Flou"),
+}
+
+/** Icon (layer list, "Ajouter" buttons) and title of the settings section. */
+export const OVERLAY_META: { [K in OverlayKind]: { icon: LucideIcon; title: string } } = {
+  text: { icon: TypeIcon, title: "Texte sélectionné" },
+  image: { icon: ImageIcon, title: "Image sélectionnée" },
+  blur: { icon: ScanFaceIcon, title: "Flou sélectionné" },
 }

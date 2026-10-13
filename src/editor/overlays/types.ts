@@ -31,5 +31,19 @@ export interface ImageOverlay extends OverlayBase {
   name: string
 }
 
-export type Overlay = TextOverlay | ImageOverlay
+/**
+ * Blurs (or pixelates) what is under it: face, license plate…
+ * `size` = width in % of the output width, `heightPct` = height in % of the
+ * output height (free resizing, unlike text and images).
+ */
+export interface BlurOverlay extends OverlayBase {
+  kind: "blur"
+  heightPct: number
+  style: "blur" | "pixelate"
+  shape: "rect" | "ellipse"
+  /** 1–100 */
+  strength: number
+}
+
+export type Overlay = TextOverlay | ImageOverlay | BlurOverlay
 export type OverlayKind = Overlay["kind"]
