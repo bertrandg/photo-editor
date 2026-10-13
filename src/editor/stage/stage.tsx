@@ -22,7 +22,7 @@ export function Stage() {
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-black/20">
-      <div className="absolute top-4 left-4 z-10">
+      <div className="absolute top-3 left-3 z-10 md:top-4 md:left-4">
         <Button
           variant="outline"
           size="sm"
@@ -39,7 +39,7 @@ export function Stage() {
           Avant / Après
         </Button>
       </div>
-      <div className="min-h-0 flex-1 p-10 pt-16">
+      <div className="min-h-0 flex-1 p-3 pt-13 md:p-10 md:pt-16">
         {tool.stage === "crop" ? (
           <CropStage source={source} version={showOriginal ? -1 : version} />
         ) : (

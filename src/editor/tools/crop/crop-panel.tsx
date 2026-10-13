@@ -123,7 +123,7 @@ export function CropPanel() {
           onValueChange={(v) => v[0] && selectPreset(v[0] as string)}
           variant="outline"
           spacing={2}
-          className="grid w-full grid-cols-3"
+          className="grid w-full grid-cols-5 md:grid-cols-3"
         >
           {RATIO_PRESETS.map((p) => {
             const r = p.ratio === "original" ? size.width / size.height : p.ratio
@@ -131,7 +131,7 @@ export function CropPanel() {
               <ToggleGroupItem
                 key={p.id}
                 value={p.id}
-                className="flex h-16 w-full flex-col gap-1.5 text-xs data-pressed:border-primary data-pressed:bg-primary/15 data-pressed:text-primary"
+                className="flex h-14 w-full flex-col gap-1.5 px-1 text-xs md:h-16 data-pressed:border-primary data-pressed:bg-primary/15 data-pressed:text-primary"
               >
                 <div className="flex size-5 items-center justify-center">
                   <RatioIcon ratio={r} />

@@ -94,7 +94,7 @@ export function OverlayLayer({ width, height }: Props) {
           >
             {selected && (
               <div
-                className="absolute -right-2.5 -bottom-2.5 size-3.5 cursor-nwse-resize rounded-full border-2 border-primary bg-white"
+                className="absolute -right-2.5 -bottom-2.5 size-4 cursor-nwse-resize rounded-full border-2 border-primary bg-white after:absolute after:-inset-3 after:content-['']"
                 onPointerDown={(e) => startResize(e, o)}
               />
             )}

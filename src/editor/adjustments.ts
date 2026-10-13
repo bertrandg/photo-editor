@@ -3,7 +3,8 @@
  *
  * Each adjustment is a self-contained module: UI metadata + a pixel processor.
  * To add a new adjustment, append an entry to `ADJUSTMENTS` — the panel, the
- * preview and the export pick it up automatically.
+ * preview and the export pick it up automatically. `process` (CPU) is used for
+ * the export; `gpu` (GLSL) makes the live preview fast and must match it.
  *
  * This file must stay free of DOM/React imports: it is also loaded by the
  * export Web Worker.
@@ -29,6 +30,14 @@ export interface AdjustmentDef {
    * (lets kernel-based effects stay consistent between preview and export).
    */
   process: (data: Uint8ClampedArray, width: number, height: number, value: number, scale: number) => void
+  /**
+   * GLSL equivalent of `process` for the live preview (render/gpu-preview.ts).
+   * The snippet updates `vec3 c` (RGB, 0–1) and can read `float v` (the
+   * value) and `float scale`. A `kernel` snippet can also call `src(vec2 o)`:
+   * the color of the pixel at offset `o` (in pixels) with all the previous
+   * adjustments applied. Without `gpu`, the preview falls back to the CPU.
+   */
+  gpu?: { kind: "pixel" | "kernel"; glsl: string }
 }
 
 export const ADJUSTMENT_GROUPS: AdjustmentGroup[] = [
@@ -65,6 +74,12 @@ export const ADJUSTMENTS: AdjustmentDef[] = [
       const lut = buildLut((v) => f * (v - 128) + 128)
       applyLut(data, lut, lut, lut)
     },
+    gpu: {
+      kind: "pixel",
+      glsl: `float k = v * 1.28;
+        float f = (259.0 * (k + 255.0)) / (255.0 * (259.0 - k));
+        c = f * (c - 128.0 / 255.0) + 128.0 / 255.0;`,
+    },
   },
   {
     id: "brightness",
@@ -79,6 +94,7 @@ export const ADJUSTMENTS: AdjustmentDef[] = [
       const lut = buildLut((v) => 255 * Math.pow(v / 255, gamma))
       applyLut(data, lut, lut, lut)
     },
+    gpu: { kind: "pixel", glsl: `c = pow(max(c, vec3(1e-6)), vec3(pow(2.0, -v / 70.0)));` },
   },
   {
     id: "saturation",
@@ -98,6 +114,11 @@ export const ADJUSTMENTS: AdjustmentDef[] = [
         data[i + 2] = gray + (b - gray) * k
       }
     },
+    gpu: {
+      kind: "pixel",
+      glsl: `float gray = dot(c, vec3(0.299, 0.587, 0.114));
+        c = gray + (c - gray) * (1.0 + v / 100.0);`,
+    },
   },
   {
     id: "warmth",
@@ -113,6 +134,11 @@ export const ADJUSTMENTS: AdjustmentDef[] = [
       const g = buildLut((v) => v + t * 0.15)
       const b = buildLut((v) => v - t)
       applyLut(data, r, g, b)
+    },
+    gpu: {
+      kind: "pixel",
+      glsl: `float t = v * 0.35 / 255.0;
+        c += vec3(t, t * 0.15, -t);`,
     },
   },
   {
@@ -143,6 +169,11 @@ export const ADJUSTMENTS: AdjustmentDef[] = [
           }
         }
       }
+    },
+    gpu: {
+      kind: "kernel",
+      glsl: `float a = v / 100.0 * 1.2 * min(1.0, 0.5 + scale / 2.0);
+        c += a * (4.0 * c - src(vec2(1.0, 0.0)) - src(vec2(-1.0, 0.0)) - src(vec2(0.0, 1.0)) - src(vec2(0.0, -1.0)));`,
     },
   },
 ]

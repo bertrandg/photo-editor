@@ -6,7 +6,7 @@ import { Slider } from "@/components/ui/slider"
 /** Titled block of a tool panel (e.g. "LUMIÈRE"). */
 export function PanelSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="flex flex-col gap-5 border-b px-5 py-5 last:border-b-0">
+    <section className="flex flex-col gap-4 border-b px-4 py-4 last:border-b-0 md:gap-5 md:px-5 md:py-5">
       <h3 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">{title}</h3>
       {children}
     </section>

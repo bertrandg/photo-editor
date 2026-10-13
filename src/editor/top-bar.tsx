@@ -46,7 +46,7 @@ export function TopBar({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+    <header className="flex h-14 shrink-0 items-center gap-1 border-b px-2 pt-[env(safe-area-inset-top)] md:h-16 md:gap-2 md:px-4 md:pt-0">
       <Button variant="ghost" size="icon-lg" onClick={onClose} aria-label="Fermer">
         <XIcon className="size-5" />
       </Button>
@@ -58,8 +58,8 @@ export function TopBar({ onClose }: { onClose: () => void }) {
           <Redo2Icon className="size-5" />
         </Button>
       </div>
-      <Separator orientation="vertical" className="mx-3 h-8!" />
-      <Button size="lg" className="h-10 px-4" disabled={exporting} onClick={download} title="Télécharger en JPEG">
+      <Separator orientation="vertical" className="mx-1 h-8! md:mx-3" />
+      <Button size="lg" className="h-10 px-3 md:px-4" disabled={exporting} onClick={download} title="Télécharger en JPEG">
         {exporting ? <Loader2Icon className="animate-spin" /> : <DownloadIcon />}
         Enregistrer
       </Button>

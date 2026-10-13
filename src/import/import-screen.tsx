@@ -49,8 +49,8 @@ export function ImportScreen({ onLoaded }: { onLoaded: (image: LoadedImage) => v
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background p-6 text-foreground">
-      <form onSubmit={submit} className="flex w-full max-w-lg flex-col gap-6 rounded-2xl border bg-card p-8 shadow-2xl">
+    <div className="flex min-h-dvh items-center justify-center bg-background p-3 text-foreground sm:p-6">
+      <form onSubmit={submit} className="flex w-full max-w-lg flex-col gap-6 rounded-2xl border bg-card p-5 shadow-2xl sm:p-8">
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-semibold">Éditer une image</h1>
           <p className="text-sm text-muted-foreground">Choisissez une image sur votre ordinateur ou collez son adresse web.</p>

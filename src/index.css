@@ -124,6 +124,11 @@
     }
   body {
     @apply bg-background text-foreground;
+    overscroll-behavior: none;
+    }
+  /* No double-tap zoom delay on touch devices. */
+  button, [role="tab"], input, label {
+    touch-action: manipulation;
     }
   html {
     @apply font-sans;
