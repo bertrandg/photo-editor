@@ -1,14 +1,16 @@
-import { DownloadIcon, Loader2Icon, Redo2Icon, Undo2Icon, XIcon } from "lucide-react"
+import { DownloadIcon, Loader2Icon, MaximizeIcon, MinimizeIcon, Redo2Icon, Undo2Icon, XIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useEditor } from "./editor-context"
 import { downloadBlob, EXPORT_EXTENSION, exportImage } from "./render/export"
+import { useFullscreen } from "./use-fullscreen"
 
 export function TopBar({ onClose }: { onClose: () => void }) {
   const { image, state, undo, redo, canUndo, canRedo } = useEditor()
   const [exporting, setExporting] = useState(false)
+  const fullscreen = useFullscreen()
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -57,6 +59,18 @@ export function TopBar({ onClose }: { onClose: () => void }) {
         <Button variant="ghost" size="icon-lg" onClick={redo} disabled={!canRedo} aria-label="Rétablir" title="Rétablir (⇧⌘Z)">
           <Redo2Icon className="size-5" />
         </Button>
+        {fullscreen.supported && (
+          <Button
+            variant="ghost"
+            size="icon-lg"
+            onClick={fullscreen.toggle}
+            aria-label={fullscreen.active ? "Quitter le plein écran" : "Plein écran"}
+            aria-pressed={fullscreen.active}
+            title={fullscreen.active ? "Quitter le plein écran (Échap)" : "Plein écran"}
+          >
+            {fullscreen.active ? <MinimizeIcon className="size-5" /> : <MaximizeIcon className="size-5" />}
+          </Button>
+        )}
       </div>
       <Separator orientation="vertical" className="mx-1 h-8! md:mx-3" />
       <Button size="lg" className="h-10 px-3 md:px-4" disabled={exporting} onClick={download} title="Télécharger en JPEG">
