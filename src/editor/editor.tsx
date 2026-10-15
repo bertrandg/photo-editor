@@ -20,7 +20,7 @@ function Sidebar() {
       <Tabs value={activeTool} onValueChange={(v) => setActiveTool(String(v))} className="min-h-0 flex-1 gap-0">
         <TabsList
           variant="line"
-          className="order-3 h-auto! w-full shrink-0 gap-0 rounded-none border-t p-0 pb-[env(safe-area-inset-bottom)] md:order-1 md:border-t-0 md:border-b md:pb-0"
+          className="order-3 h-auto! w-full shrink-0 gap-0 rounded-none border-t p-0 pb-(--safe-bottom) md:order-1 md:border-t-0 md:border-b md:pb-0"
         >
           {TOOLS.map((t) => (
             <TabsTrigger

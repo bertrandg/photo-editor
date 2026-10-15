@@ -48,7 +48,7 @@ export function TopBar({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-1 border-b px-2 pt-[env(safe-area-inset-top)] md:h-16 md:gap-2 md:px-4 md:pt-0">
+    <header className="flex h-[calc(3.5rem+var(--safe-top))] shrink-0 items-center gap-1 border-b px-2 pt-(--safe-top) md:h-[calc(4rem+var(--safe-top))] md:gap-2 md:px-4">
       <Button variant="ghost" size="icon-lg" onClick={onClose} aria-label="Fermer">
         <XIcon className="size-5" />
       </Button>
